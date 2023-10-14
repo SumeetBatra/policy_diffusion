@@ -1,0 +1,58 @@
+name: test_experiment
+
+trainer:
+  class: PolicyDiffusion
+  module: diffusion.diffusion_trainers
+  config:
+    random_seed: 1111
+    env_name: humanoid
+    checkpoint_n_epochs: 10
+    track_agent_quality: true
+    use_language: false
+    use_wandb: true
+    debug: false
+    reeval_archive: true
+    grad_clip: true
+    train_batch_size: 64
+    test_batch_size: 64
+    num_epochs: 300
+    center_data: true
+    autoencoder_cp_path: :(
+    amp:
+      enabled: false
+
+
+sampler:
+  class: DDIM
+  module: samplers.ddim
+  config:
+    n_steps: 100
+
+autoencoder:
+  class: HypernetAutoEncoder
+  module: autoencoders.hypernet
+  config:
+    emb_channels: 4
+    z_channels: 4
+    z_height: 4
+
+model:
+  class: ConditionalUNet
+  module: models.cond_unet
+  config:
+    in_channels: 4  # must be same as emb_channels
+    out_channels: 4  # same ^
+    channels: 64  # first conv layer projects to this dimensionality
+    n_res_blocks: 1
+    attention_levels: []
+    channel_multipliers: [1, 2, 4]
+    n_heads: 4
+    d_cond: 256
+    measure_dim: 2
+
+optimizer:
+  class: AdamW
+  module: torch.optim
+  config:
+    lr: 0.001
+
