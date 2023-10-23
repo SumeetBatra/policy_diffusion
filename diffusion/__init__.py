@@ -1,4 +1,4 @@
-from diffusion.schedulers import *
+from diffusion.schedules import *
 
 BETA_SCHEDULE_REGISTRY = {
     "cosine": cosine_beta_schedule,

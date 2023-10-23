@@ -39,8 +39,9 @@ from brax.envs import wrappers
 from brax.envs.env import Env
 import gym
 
-from envs.brax_custom import FeetContactWrapper
-from envs.brax_custom import ActionClipWrapper, RewardClipWrapper, ObservationClipWrapper
+from envs.brax_custom.custom_wrappers.locomotion_wrappers import FeetContactWrapper
+from envs.brax_custom.custom_wrappers.reward_wrappers import TotalReward
+from envs.brax_custom.custom_wrappers.clip_wrappers import ActionClipWrapper, RewardClipWrapper, ObservationClipWrapper
 
 # From QDax: experimentally determinated offset (except for antmaze)
 # should be sufficient to have only positive rewards but no guarantee

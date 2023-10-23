@@ -1,4 +1,4 @@
-# training entry point for both diffusion and the VAE 
+# training entry point for both diffusion and the VAE
 import argparse
 import logging
 import os
@@ -131,14 +131,14 @@ def parse_spec_file(args: argparse.Namespace) -> Mapping[str, Any]:
     # Use the results directory as a checkpoint directory for the trainer.
     results_dir = Path(os.path.expandvars(args.results_dir))
     results_dir.mkdir(exist_ok=True)
-    exp_dir = results_dir.joinpath(name + '_' + seed)
+    exp_dir = results_dir.joinpath(name + '_' + str(seed))
     try:
         exp_dir.mkdir(exist_ok=False)
     except:
         raise FileExistsError(f'Experiment dir {exp_dir} already exists.'
                               f' Please rename your experiment or delete the old one')
 
-    spec["trainer"]["config"]["exp_dir"] = exp_dir
+    spec["trainer"]["config"]["exp_dir"] = str(exp_dir)
 
     # Set training mode.
     spec["trainer"]["config"]["debug"] = args.debug
@@ -216,7 +216,6 @@ def main(cl_args: Optional[Sequence[str]] = None) -> None:
     with open(log_dir / "experiment_spec_final.yaml", "w", encoding="utf-8") as w:
         yaml.safe_dump(spec, w)
 
-    # Build and train.
     trainer.build(spec)
     trainer.train()
 

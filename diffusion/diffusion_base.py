@@ -2,7 +2,7 @@ import torch.nn.functional as F
 import logging
 
 from trainers.trainer_base import TrainerBase
-from schedules import *
+from diffusion.schedules import *
 from typing import Mapping, Any, Optional
 from common.utils import extract, create_instance_from_spec as from_spec
 from samplers.base_sampler import BaseSampler

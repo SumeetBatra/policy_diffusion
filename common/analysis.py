@@ -30,7 +30,6 @@ from common.brax_utils import shared_params, rollout_many_agents
 from common.metrics import js_divergence
 from envs.brax_custom import reward_offset
 from models.cond_unet import ConditionalUNet
-from trainers.diffusion_trainers import PolicyDiffusion
 from diffusion.schedules import cosine_beta_schedule
 from samplers.ddim import DDIMSampler
 from RL.actor_critic import Actor

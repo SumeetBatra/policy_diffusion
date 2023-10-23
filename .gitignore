@@ -1,2 +1,5 @@
 .idea/
 results/
+runs/
+archives/
+*__pycache__*

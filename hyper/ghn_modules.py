@@ -1,7 +1,7 @@
 
-from models.hyper.ghn import *
+from hyper.ghn import *
 
-from utils.ghn_utils import capacity, default_device
+from hyper.ghn_utils import capacity, default_device
 
 import numpy as np
 import copy

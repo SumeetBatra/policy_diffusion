@@ -4,6 +4,7 @@ import torch.nn as nn
 import logging
 import random
 import numpy as np
+import os
 
 from abc import abstractmethod
 from typing import Any, Mapping, Optional
@@ -25,6 +26,9 @@ class TrainerBase:
 
     env_name: str
     exp_dir: str
+
+    # where the trained archive policy "datasets" are saved
+    archive_dir: str
 
     save_image_path: str
 
@@ -85,7 +89,7 @@ class TrainerBase:
         self.weight_normalizer = None
         self.test_loader = None
 
-        self.cp_dir = self.exp_dir.joinpath('checkpoints')
+        self.cp_dir = Path(os.path.join(self.exp_dir, 'checkpoints'))
         self.cp_dir.mkdir(exist_ok=True)
 
         # env specific params
@@ -98,14 +102,15 @@ class TrainerBase:
         random.seed(self.random_seed)
         np.random.seed(self.random_seed)
 
-        torch.backends.cudnn.benchmark = not self.determinstic
-        torch.backends.cudnn.deterministic = self.determinstic
+        torch.backends.cudnn.benchmark = not self.deterministic
+        torch.backends.cudnn.deterministic = self.deterministic
 
         self.scaler = torch.cuda.amp.GradScaler(**kwargs.pop("amp", {"enabled": False}))
 
     def initialize_datasets(self) -> None:
         self.train_loader, self.train_archive, self.weight_normalizer = shaped_elites_dataset_factory(
             env_name=self.env_name,
+            archive_dir=self.archive_dir,
             batch_size=self.train_batch_size,
             is_eval=False,
             center_data=self.center_data,
@@ -115,6 +120,7 @@ class TrainerBase:
         )
         self.test_loader, *_ = shaped_elites_dataset_factory(
             env_name=self.env_name,
+            archive_dir=self.archive_dir,
             batch_size=self.test_batch_size,
             is_eval=True,
             center_data=self.center_data,
@@ -125,18 +131,21 @@ class TrainerBase:
 
     def initialize_env(self, spec: Mapping[str, Any]) -> None:
         self.env_name = spec['env']['env_name']
-        self.obs_dim, self.action_shape = shared_params[self.env_name], np.array([shared_params[self.env_name]['action_dim']])
+        self.obs_dim, self.action_shape = shared_params[self.env_name]['obs_dim'], np.array([shared_params[self.env_name]['action_dim']])
         self.clip_obs_rew = spec['env']['clip_obs_rew']
 
         if self.track_agent_quality:
-            self.env = make_vec_env_brax(spec['env'])
+            rollouts_per_agent = 10  # to align ourselves with baselines
+            spec['env']['env_batch_size'] = self.test_batch_size * rollouts_per_agent
+            self.env = make_vec_env_brax(spec['env'], seed=self.random_seed)
 
     def build(self, spec: Mapping[str, Any]) -> None:
         self.spec = spec
-        self.initialize_datasets(spec)
         self.initialize_env(spec)
+        self.initialize_datasets()
 
         self.model = from_spec(spec['model'])
+        self.model.to(self.device)
 
         if self.use_wandb:
             self.writer = SummaryWriter(f'runs/{self.name}')

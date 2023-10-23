@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -7,39 +8,31 @@ from hyper.ghn_modules import *
 from RL.actor_critic import Actor
 
 
-def classifier_gradients(classifier: nn.Module, x: torch.Tensor, y: torch.Tensor, classifier_scale: int = 1):
-    # TODO: THIS WON'T WORK! Need to move this to a model that predicts measures from latent codes
-    '''
-    Gets the gradients of the error between the policies' target and predicted measures
-    :param classifier: Model that predicts measures from latent codes
-    :param x: batch of latent codes
-    :param y: target measures
-    :param classifier_scale: scale of the gradient magnitude. Higher will result in stronger conditioning
-    '''
-    with torch.enable_grad():
-        x.detach().requires_grad_(True)
-        pred = classifier(x)
-        loss = F.mse_loss(pred, y)
-        return torch.autograd.grad(loss, x)[0] * classifier_scale
-
-
 class HypernetAutoEncoder(AutoEncoderBase):
     def __init__(self,
-                 obs_shape: int,
-                 action_shape: np.ndarray,
                  emb_channels: int,
                  z_channels: int,
-                 z_height: int = 4,
-                 conditional: bool = False,
-                 ghn_hid: int = 64,
-                 obsnorm_hid: int = 64,
-                 enc_fc_hid: int = 64,
-                 ):
+                 z_height: int,
+                 ghn_hid: int,
+                 obsnorm_hid: int,
+                 enc_fc_hid: int,
+                 obs_shape: int,
+                 action_shape: np.ndarray,
+                 conditional: bool,
+                 **kwargs):
         """
         :param emb_channels: is the number of dimensions in the quantized embedding space
         :param z_channels: is the number of channels in the embedding space
         """
-        AutoEncoderBase.__init__(self, emb_channels, z_channels, z_height, conditional)
+        super().__init__(emb_channels=emb_channels,
+                         z_channels=z_channels,
+                         z_height=z_height,
+                         conditional=conditional,
+                         **kwargs)
+        self.conditional = conditional
+        self.obs_shape = obs_shape
+        self.action_shape = action_shape
+
         # TODO: factor in the obs-norm params into the weights dict for the model encoder and decoder
         self.encoder = ModelEncoder(obs_shape=obs_shape,
                                     action_shape=action_shape,
@@ -78,7 +71,7 @@ class HypernetAutoEncoder(AutoEncoderBase):
 
         def make_actor():
             return Actor(obs_shape=obs_shape,
-                         action_shape=action_shape,
+                         action_shape=self.action_shape,
                          deterministic=True,
                          normalize_obs=False)
 
@@ -219,7 +212,7 @@ class ModelEncoder(nn.Module):
         self.fc_hid = fc_hid
         self.regress_to_measure = regress_to_measure
         assert not (
-                    self.regress_to_measure and self.conditional), "Cannot regress to measure and be conditional on measure at the same time"
+                self.regress_to_measure and self.conditional), "Cannot regress to measure and be conditional on measure at the same time"
         self.measure_dim = measure_dim
 
         self.cnns = {}

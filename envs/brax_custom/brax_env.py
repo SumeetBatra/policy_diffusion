@@ -29,17 +29,17 @@ _to_custom_env = {
 }
 
 
-def make_vec_env_brax(cfg):
-    entry_point = functools.partial(brax_custom.create_gym_env, env_name=cfg.env_name)
-    brax_env_name = _to_custom_env[cfg.env_name]['custom_env_name']
+def make_vec_env_brax(cfg, seed: int):
+    entry_point = functools.partial(brax_custom.create_gym_env, env_name=cfg['env_name'])
+    brax_env_name = _to_custom_env[cfg['env_name']]['custom_env_name']
     if brax_env_name not in gym.envs.registry.env_specs:
         gym.register(brax_env_name, entry_point=entry_point)
 
-    kwargs = _to_custom_env[cfg.env_name]['kwargs']
-    if cfg.clip_obs_rew:
+    kwargs = _to_custom_env[cfg['env_name']]['kwargs']
+    if cfg['clip_obs_rew']:
         kwargs['clip_obs'] = (-10, 10)
         kwargs['clip_rewards'] = (-10, 10)
-    vec_env = gym.make(_to_custom_env[cfg.env_name]['custom_env_name'], batch_size=cfg.env_batch_size, seed=cfg.seed,
+    vec_env = gym.make(_to_custom_env[cfg['env_name']]['custom_env_name'], batch_size=cfg['env_batch_size'], seed=seed,
                        **kwargs)
     vec_env = to_torch.JaxToTorchWrapper(vec_env, device='cuda')
 

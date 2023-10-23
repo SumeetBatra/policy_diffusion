@@ -1,15 +1,14 @@
 import logging
 import torch
 import copy
-
 import wandb
-from torch import nn as nn
 
+from torch.utils.tensorboard import SummaryWriter
 from trainers.trainer_base import TrainerBase
 from common.metrics import evaluate_agent_quality
 from common.analysis import evaluate_vae_subsample
 from common.tensor_dict import TensorDict
-from common.utils import grad_norm
+from common.utils import grad_norm, create_instance_from_spec as from_spec
 from typing import Dict, Any, Optional, Mapping
 from losses.loss_functions import mse_loss_from_weights_dict
 
@@ -25,7 +24,23 @@ class VAETrainer(TrainerBase):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        VAETrainer.set_attributes(self, kwargs)
 
+    def build(self, spec: Mapping[str, Any]) -> None:
+        self.spec = spec
+        self.initialize_env(spec)
+        self.initialize_datasets()
+
+        self.model = from_spec(spec['model'], obs_shape=self.obs_dim, action_shape=self.action_shape,
+                               conditional=self.conditional)
+        self.model.to(self.device)
+
+        if self.use_wandb:
+            self.writer = SummaryWriter(f'runs/{self.name}')
+
+        self.optimizer = from_spec(spec['optim'], self.model.parameters())
+
+    def train(self):
         logger.info(
             f'Total number of parameters in the encoder: {sum(p.numel() for p in self.model.encoder.parameters() if p.requires_grad)}')
         logger.info(
@@ -34,7 +49,6 @@ class VAETrainer(TrainerBase):
             f'Total number of parameters in obs_norm decoder {sum(p.numel() for p in self.model.obsnorm_decoder.parameters() if p.requires_grad)}')
         logger.info(f'Total number of paramers:{sum(p.numel() for p in self.model.parameters() if p.requires_grad)}')
 
-    def train(self):
         for epoch in range(self.start_epoch, self.num_epochs + 1):
             # do an initial round of validation
             if self.track_agent_quality and epoch % 10 == 0:
@@ -160,8 +174,8 @@ class VAETrainer(TrainerBase):
                                           self.test_batch_size,
                                           device=self.device,
                                           normalize_obs=True,
-                                          center_data=self.spec['dataset']['center_data'],
-                                          weight_normalizer=self.spec['dataset']['weight_normalizer'])
+                                          center_data=self.center_data,
+                                          weight_normalizer=self.weight_normalizer)
 
             # now try to sample a policy with just measures
             if self.conditional:
@@ -175,8 +189,8 @@ class VAETrainer(TrainerBase):
                                                self.test_batch_size,
                                                device=self.device,
                                                normalize_obs=True,
-                                               center_data=self.spec['dataset']['center_data'],
-                                               weight_normalizer=self.spec['dataset']['weight_normalizer'])
+                                               center_data=self.center_data,
+                                               weight_normalizer=self.weight_normalizer)
 
                 for key, val in info2.items():
                     info['Conditional_' + key] = val

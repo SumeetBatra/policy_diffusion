@@ -5,11 +5,14 @@ from typing import Dict, Iterable, List, Optional
 
 import numpy as np
 import torch
+import logging
+
 from torch import Tensor
-from utils.utilities import log
 
+logger = logging.getLogger("vae")
+logger.setLevel(logging.DEBUG)
 
-from utils.dicts import (
+from common.dicts import (
     copy_dict_structure,
     iter_dicts_recursively,
     iterate_recursively,
@@ -158,7 +161,7 @@ def find_invalid_data(
             if torch.is_floating_point(v):
                 # check if there are any NaNs or infs
                 if torch.isnan(v).any() or torch.isinf(v).any():
-                    log.error(f"{msg}: Found NaNs or infs in {k}: {v}")
+                    logger.error(f"{msg}: Found NaNs or infs in {k}: {v}")
                     res[k] = torch.isnan(v) | torch.isinf(v)
 
                 # noinspection PyUnresolvedReferences
@@ -169,6 +172,6 @@ def find_invalid_data(
 
             if invalid_idx is not None and invalid_idx.numel() > 0:
                 res[k] = invalid_idx
-                log.error(f"{msg}: Found invalid data in {k} at {invalid_idx} (numel={invalid_idx.numel()})")
+                logger.error(f"{msg}: Found invalid data in {k} at {invalid_idx} (numel={invalid_idx.numel()})")
 
     return res

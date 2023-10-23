@@ -6,11 +6,11 @@ import glob
 import numpy as np
 import logging
 
+from pathlib import Path
 from typing import List, Union, Optional, Dict, Any
 from pandas import DataFrame
 from torch.utils.data import Dataset, DataLoader
 from RL.actor_critic import Actor
-# from ribs.archives._elite import EliteBatch
 from tqdm import tqdm
 from RL.normalize import ObsNormalizer
 from common.tensor_dict import TensorDict, cat_tensordicts
@@ -182,6 +182,7 @@ class LangShapedEliteDataset(ShapedEliteDataset):
 
 
 def shaped_elites_dataset_factory(env_name,
+                                  archive_dir: str,
                                   batch_size=32,
                                   is_eval=False,
                                   center_data: bool = False,
@@ -190,10 +191,10 @@ def shaped_elites_dataset_factory(env_name,
                                   results_folder = "results",
                                   N=-1,
                                   cut_out = False,):
-    archive_data_path = f'data/{env_name}'
+    archive_data_path = archive_dir
     archive_dfs = []
 
-    archive_df_paths = glob.glob(archive_data_path + '/archive*100x100*.pkl')
+    archive_df_paths = glob.glob(archive_data_path + f'/{env_name}_archive*100x100*.pkl')
     for path in archive_df_paths:
         with open(path, 'rb') as f:
             logger.info(f'Loading archive at {path}')
@@ -234,8 +235,9 @@ def shaped_elites_dataset_factory(env_name,
 
         # load centroids if they were previously calculated. Maintains consistency across runs
         centroids = None
-        centroids_path = f'{results_folder}/{env_name}/centroids.npy'
-        if os.path.exists(centroids_path):
+        centroids_dir = Path(f'{results_folder}')
+        centroids_path = centroids_dir.joinpath('centroids.npy')
+        if centroids_path.exists():
             logger.info(f'Existing centroids found at {centroids_path}. Loading centroids...')
             centroids = np.load(centroids_path)
         cvt_archive = archive_df_to_archive(archive_df,

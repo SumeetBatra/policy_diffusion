@@ -4,7 +4,7 @@ import numpy as np
 
 from abc import ABC, abstractmethod
 from torch.distributions import MultivariateNormal, Categorical
-from RL.normalize_obs import ReturnNormalizer, ObsNormalizer
+from RL.normalize import ReturnNormalizer, ObsNormalizer
 
 
 class StochasticPolicy(ABC, nn.Module):

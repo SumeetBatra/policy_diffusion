@@ -242,8 +242,8 @@ class PolicyDiffusion(DiffusionBase):
                                           self.test_batch_size,
                                           device=self.device,
                                           normalize_obs=True,
-                                          center_data=self.spec['dataset']['center_data'],
-                                          weight_normalizer=self.spec['dataset']['weight_normalizer'])
+                                          center_data=self.center_data,
+                                          weight_normalizer=self.weight_normalizer)
             return info
 
     def reevaluate_archive(self, epoch: int, info: Dict[str, Any]):
@@ -278,9 +278,8 @@ class PolicyDiffusion(DiffusionBase):
                                                                   average=self.average_elites,
                                                                   latent_shape=(
                                                                   self.z_channels, self.latent_size, self.latent_size),
-                                                                  center_data=self.spec['dataset']['center_data'],
-                                                                  weight_normalizer=self.spec['dataset'][
-                                                                      'weight_normalizer'])
+                                                                  center_data=self.center_data,
+                                                                  weight_normalizer=self.weight_normalizer)
 
         # perform uniform sampling of the original policies in the archive
         uniform_subsample_results, uniform_image_results = evaluate_ldm_subsample(env_name=self.env_name,
@@ -301,11 +300,9 @@ class PolicyDiffusion(DiffusionBase):
                                                                                   latent_shape=(
                                                                                       self.z_channels, self.latent_size,
                                                                                       self.latent_size),
-                                                                                  center_data=self.spec['dataset'][
-                                                                                      'center_data'],
+                                                                                  center_data=self.center_data,
                                                                                   weight_normalizer=
-                                                                                  self.spec['dataset'][
-                                                                                      'weight_normalizer'])
+                                                                                  self.weight_normalizer)
 
         for key, val in subsample_results['Reconstructed'].items():
             info['Archive/' + key] = val

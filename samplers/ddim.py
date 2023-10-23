@@ -3,7 +3,7 @@ import torch.nn as nn
 import numpy as np
 
 from typing import Optional, List, Any, Mapping
-from base_sampler import BaseSampler
+from samplers.base_sampler import BaseSampler
 
 
 class DDIMSampler(BaseSampler):

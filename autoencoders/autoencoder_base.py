@@ -1,6 +1,9 @@
 import torch
 import torch.nn as nn
 
+from typing import Any, Mapping
+
+
 class GaussianDistribution:
     # https://nn.labml.ai/diffusion/stable_diffusion/model/autoencoder.html
     def __init__(self, parameters: torch.Tensor):
@@ -29,7 +32,7 @@ class GaussianDistribution:
 
 
 class AutoEncoderBase(nn.Module):
-    def __init__(self, emb_channels: int, z_channels: int, z_height: int, conditional: bool = False):
+    def __init__(self, emb_channels: int, z_channels: int, z_height: int, conditional: bool = False, **kwargs):
         super().__init__()
         self.encoder: nn.Module = None
         self.decoder: nn.Module = None
@@ -44,6 +47,16 @@ class AutoEncoderBase(nn.Module):
         # Convolution to map from quantized embedding space back to
         # embedding space
         self.post_quant_conv = nn.Conv2d(emb_channels, z_channels, 1)
+
+    @classmethod
+    def set_attributes(cls, obj: Any, values: Mapping[str, Any]) -> None:
+        """Uses annotations to set the attributes of the instance object."""
+        ann = vars(cls).get("__annotations__")
+        if not isinstance(ann, dict):
+            return
+        for name in ann.keys():
+            if (value := values.pop(name, None)) is not None:
+                setattr(obj, name, value)
 
     def encode(self, x: torch.Tensor, y: torch.Tensor = None):
         assert self.encoder is not None, "Need to define a valid encoder (nn.Module)"

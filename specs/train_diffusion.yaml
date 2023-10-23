@@ -5,7 +5,7 @@ trainer:
   module: trainers.diffusion_trainers
   config:
     random_seed: 1111
-    env_name: humanoid
+    archive_dir: ./archives
     checkpoint_n_epochs: 10
     track_agent_quality: true
     use_language: false
@@ -50,7 +50,7 @@ model:
     d_cond: 256
     measure_dim: 2
 
-optimizer:
+optim:
   class: AdamW
   module: torch.optim
   config:
