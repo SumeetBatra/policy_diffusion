@@ -2,7 +2,7 @@ name: test_experiment
 
 trainer:
   class: PolicyDiffusion
-  module: diffusion.diffusion_trainers
+  module: trainers.diffusion_trainers
   config:
     random_seed: 1111
     env_name: humanoid

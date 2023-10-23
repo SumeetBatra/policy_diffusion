@@ -28,8 +28,7 @@ class PolicyDiffusion(DiffusionBase):
         Implements the main policy diffusion model described in the paper. uses VAE for latent
         diffusion and DDIM for fast sampling
         '''
-        super().__init__(kwargs)
-        PolicyDiffusion.set_attributes(self, kwargs)
+        super().__init__(**kwargs)
 
         self.clip_denoised = False
         self.vlb_weights = self.betas ** 2 / (2 * self.posterior_variance * self.alphas * (1 - self.alphas_cumprod))

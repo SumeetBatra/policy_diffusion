@@ -1,0 +1,36 @@
+name: test_vae_experiment
+
+trainer:
+  class: VAETRainer
+  module: trainers.vae_trainer
+  config:
+    random_seed: 1111
+    env_name: humanoid
+    checkpoint_n_epochs: 10
+    track_agent_quality: true
+    use_wandb: true
+    debug: false
+    reeval_archive: true
+    grad_clip: true
+    train_batch_size: 64
+    test_batch_size: 64
+    num_epochs: 300
+    center_data: true
+    conditional: false
+    kl_coef: 1e-6
+    amp:
+      enabled: false
+
+model:
+  class: HypernetAutoEncoder
+  module: autoencoders.hypernet
+  config:
+    emb_channels: 4
+    z_channels: 4
+    z_height: 4
+
+optimizer:
+  class: Adam
+  module: torch.optim
+  config:
+    lr: 1e-4

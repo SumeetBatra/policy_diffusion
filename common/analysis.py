@@ -21,17 +21,18 @@ import scienceplots
 
 from pathlib import Path
 from attrdict import AttrDict
-from autoencoders.policy.hypernet import HypernetAutoEncoder as VAE
+from autoencoders.hypernet import HypernetAutoEncoder as VAE
 from collections import OrderedDict
 from ribs.archives import GridArchive, CVTArchive
-from utils.brax_utils import rollout_many_agents
-from utils.archive_utils import archive_df_to_archive, reevaluate_ppga_archive, save_heatmap
-from utils.brax_utils import shared_params, rollout_many_agents, js_divergence
+from common.brax_utils import rollout_many_agents
+from common.archive_utils import archive_df_to_archive, reevaluate_ppga_archive, save_heatmap
+from common.brax_utils import shared_params, rollout_many_agents
+from common.metrics import js_divergence
 from envs.brax_custom import reward_offset
 from models.cond_unet import ConditionalUNet
-from diffusion.latent_diffusion import LatentDiffusion
-from diffusion.gaussian_diffusion import cosine_beta_schedule
-from diffusion.ddim import DDIMSampler
+from trainers.diffusion_trainers import PolicyDiffusion
+from diffusion.schedules import cosine_beta_schedule
+from samplers.ddim import DDIMSampler
 from RL.actor_critic import Actor
 from RL.vectorized import VectorizedActor
 from envs.brax_custom.brax_env import make_vec_env_brax
@@ -278,7 +279,8 @@ def initialize_all_models_and_archives(env_name):
     model.eval()
 
     betas = cosine_beta_schedule(timesteps)
-    diffusion = LatentDiffusion(betas, num_timesteps=timesteps, device=device)
+    # TODO: fix this -- Will not work!
+    diffusion = PolicyDiffusion(betas, num_timesteps=timesteps, device=device)
     sampler = DDIMSampler(diffusion, n_steps=100)
 
     cfg_path = './checkpoints/cfg.json'

@@ -6,8 +6,17 @@ https://github.com/hojonathanho/diffusion/blob/1e0dceb3b3495bbe19116a5e1b3596cd0
 
 import numpy as np
 import torch as th
-
 import torch.nn.functional as F
+
+from common.tensor_dict import TensorDict
+
+
+def grad_norm(model):
+    sqsum = 0.0
+    for p in model.parameters():
+        if p.grad is not None:
+            sqsum += (p.grad ** 2).sum().item()
+    return np.sqrt(sqsum)
 
 
 def normal_kl(mean1, logvar1, mean2, logvar2):
@@ -85,3 +94,30 @@ def mse(pred, target, mean=True):
     else:
         loss = F.mse_loss(target, pred, reduction='none')
     return loss
+
+
+def mse_loss_from_weights_dict(target_weights_dict: TensorDict, pred_weights_dict: TensorDict):
+    loss = 0
+    loss_info = {}
+    for key in pred_weights_dict.keys():
+        key_loss = F.mse_loss(target_weights_dict[key], pred_weights_dict[key])
+        loss += key_loss
+        loss_info[key] = key_loss.item()
+
+    with th.no_grad():
+        obsnorm_loss = th.Tensor([loss_info[key] for key in loss_info.keys() if 'obs_normalizer' in key]).sum()
+        loss_info.update({
+            'mse_loss': (loss - obsnorm_loss).item(),
+            'obsnorm_loss': obsnorm_loss.item()
+        })
+    return loss, loss_info
+
+
+def mse_from_norm_dict(target_weights_dict: dict, rec_weight_dict: dict):
+    loss = 0
+    loss_info = {}
+    for key in rec_weight_dict.keys():
+        key_loss = F.mse_loss(target_weights_dict[key], rec_weight_dict[key])
+        loss += key_loss
+        loss_info[key] = key_loss.item()
+    return loss, loss_info

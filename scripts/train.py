@@ -1,3 +1,4 @@
+# training entry point for both diffusion and the VAE 
 import argparse
 import logging
 import os
