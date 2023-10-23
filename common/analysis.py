@@ -5,14 +5,6 @@ import pickle
 import os
 import json
 import matplotlib
-matplotlib.rcParams.update(
-    {
-        "figure.dpi": 150,
-        "font.size": 20,
-    }
-)
-matplotlib.rcParams["pdf.fonttype"] = 42
-matplotlib.rcParams["ps.fonttype"] = 42
 import matplotlib.pyplot as plt
 import wandb
 import pandas as pd
@@ -41,8 +33,17 @@ api = wandb.Api()
 
 plt.style.use('science')
 
+matplotlib.rcParams.update(
+    {
+        "font.size": 20,
+        "figure.dpi": 150,
+        "text.usetex": False,
+        'pdf.fonttype': 42,
+        'ps.fonttype': 42,
+    }
+)
 
-def evaluate_vae_subsample(env_name: str, archive_df=None, model=None, N: int = 100, image_path: str = None,
+def evaluate_vae_subsample(env_name: str, seed: int, archive_df=None, model=None, N: int = 100, image_path: str = None,
                             suffix: str = None, ignore_first: bool = False, clip_obs_rew: bool = False,
                             normalize_obs: bool = False,
                             center_data: bool = False,
@@ -75,7 +76,7 @@ def evaluate_vae_subsample(env_name: str, archive_df=None, model=None, N: int = 
         archive_df = archive_df
 
     env_cfg = AttrDict(shared_params[env_name]['env_cfg'])
-    env_cfg.seed = 1111
+    env_cfg.seed = seed
     env_cfg.clip_obs_rew = clip_obs_rew
 
     if N != -1:
@@ -93,7 +94,7 @@ def evaluate_vae_subsample(env_name: str, archive_df=None, model=None, N: int = 
                                              dims=archive_dims,
                                              ranges=ranges,
                                              seed=env_cfg.seed,
-                                             qd_offset=reward_offset[env_name])
+                                             qd_score_offset=reward_offset[env_name])
 
     normalize_obs, normalize_returns = True, False
     if not ignore_first:
@@ -107,7 +108,7 @@ def evaluate_vae_subsample(env_name: str, archive_df=None, model=None, N: int = 
             'Coverage': original_reevaluated_archive.stats.coverage,
             'Max_fitness': original_reevaluated_archive.stats.obj_max,
             'Avg_Fitness': original_reevaluated_archive.stats.obj_mean,
-            'QD_Score': original_reevaluated_archive.offset_qd_score
+            'QD_Score': original_reevaluated_archive.qd_score_offset
         }
         if env_cfg.num_dims == 2 and image_path is not None:
             orig_image_array = save_heatmap(original_reevaluated_archive,
@@ -127,7 +128,7 @@ def evaluate_vae_subsample(env_name: str, archive_df=None, model=None, N: int = 
         'Coverage': reconstructed_evaluated_archive.stats.coverage,
         'Max_fitness': reconstructed_evaluated_archive.stats.obj_max,
         'Avg_Fitness': reconstructed_evaluated_archive.stats.obj_mean,
-        'QD_Score': reconstructed_evaluated_archive.offset_qd_score
+        'QD_Score': reconstructed_evaluated_archive.qd_score_offset
     }
     results = {
         'Original': original_results if not ignore_first else None,
@@ -185,7 +186,7 @@ def evaluate_ldm_subsample(env_name: str, archive_df=None, ldm=None, autoencoder
                                              dims=archive_dims,
                                              ranges=ranges,
                                              seed=env_cfg.seed,
-                                             qd_offset=reward_offset[env_name])
+                                             qd_score_offset=reward_offset[env_name])
 
     normalize_obs, normalize_returns = True, False
     if not ignore_first:
@@ -199,7 +200,7 @@ def evaluate_ldm_subsample(env_name: str, archive_df=None, ldm=None, autoencoder
             'Coverage': original_reevaluated_archive.stats.coverage,
             'Max_fitness': original_reevaluated_archive.stats.obj_max,
             'Avg_Fitness': original_reevaluated_archive.stats.obj_mean,
-            'QD_Score': original_reevaluated_archive.offset_qd_score
+            'QD_Score': original_reevaluated_archive.qd_score_offset
         }
 
     print('Re-evaluated Reconstructed Archive')
@@ -222,7 +223,7 @@ def evaluate_ldm_subsample(env_name: str, archive_df=None, ldm=None, autoencoder
         'Coverage': reconstructed_evaluated_archive.stats.coverage,
         'Max_fitness': reconstructed_evaluated_archive.stats.obj_max,
         'Avg_Fitness': reconstructed_evaluated_archive.stats.obj_mean,
-        'QD_Score': reconstructed_evaluated_archive.offset_qd_score
+        'QD_Score': reconstructed_evaluated_archive.qd_score_offset
     }
     results = {
         'Original': original_results if not ignore_first else None,

@@ -8,8 +8,6 @@ trainer:
     archive_dir: ./archives
     checkpoint_n_epochs: 10
     track_agent_quality: true
-    use_wandb: true
-    debug: false
     reeval_archive: true
     grad_clip: true
     train_batch_size: 64

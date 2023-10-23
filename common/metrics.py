@@ -8,9 +8,9 @@ from common.tensor_dict import TensorDict
 from common.brax_utils import rollout_many_agents
 from dataset.shaped_elites_dataset import WeightNormalizer, cat_tensordicts
 from typing import Optional
+from attrdict import AttrDict
 
 logger = logging.getLogger("metrics")
-logger.setLevel(logging.DEBUG)
 
 
 def kl_divergence(mu1, cov1, mu2, cov2):
@@ -83,6 +83,7 @@ def evaluate_agent_quality(env_cfg: dict,
                            center_data: bool = False,
                            weight_normalizer: Optional[WeightNormalizer] = None):
 
+    env_cfg = AttrDict(env_cfg)
     obs_dim = vec_env.single_observation_space.shape[0]
     action_shape = vec_env.single_action_space.shape
 

@@ -17,7 +17,6 @@ from typing import Dict, Any, Optional, Mapping
 from losses.loss_functions import mse
 
 logger = logging.getLogger("policy_diffusion")
-logger.setLevel(logging.DEBUG)
 
 
 class PolicyDiffusion(DiffusionBase):

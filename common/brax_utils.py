@@ -8,7 +8,6 @@ from RL.actor_critic import Actor
 from RL.vectorized import VectorizedActor
 
 logger = logging.getLogger("brax")
-logger.setLevel(logging.DEBUG)
 
 
 shared_params = OrderedDict({
@@ -177,15 +176,16 @@ def rollout_many_agents(agents: list[Actor], env_cfg, vec_env, device, determini
     :returns: Sum rewards and average measures for all agents
     '''
     # TODO: with obs_norm enabled is not tested in needs testing!
-
     assert vec_env.num_envs % len(agents) == 0, 'The num_envs parameter must be a multiple of the number of agents'
 
     num_envs_per_agent = vec_env.num_envs // len(agents)
 
     # normalize_obs = False
     obs_shape = vec_env.single_observation_space.shape
+    action_shape = (vec_env.action_space.shape[1],)
 
-    vec_agent = VectorizedActor(agents, Actor, normalize_obs=False, obs_shape=obs_shape, normalize_returns=False)
+    vec_agent = VectorizedActor(agents, Actor, normalize_obs=False, obs_shape=obs_shape, action_shape=action_shape,
+                                normalize_returns=False, deterministic=deterministic)
 
     total_reward = np.zeros(vec_env.num_envs)
     traj_length = 0

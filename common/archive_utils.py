@@ -17,10 +17,10 @@ from envs.brax_custom.brax_env import make_vec_env_brax
 from envs.brax_custom import reward_offset
 from common.tensor_dict import TensorDict, cat_tensordicts
 from copy import deepcopy
+from tqdm import tqdm
 
 
-def save_heatmap(archive, heatmap_path, emitter_loc: Optional[tuple[float, ...]] = None,
-                 forces: Optional[tuple[float, ...]] = None):
+def save_heatmap(archive, heatmap_path):
     """Saves a heatmap of the archive to the given path.
     Args:
         archive (GridArchive or CVTArchive): The archive to save.
@@ -31,7 +31,7 @@ def save_heatmap(archive, heatmap_path, emitter_loc: Optional[tuple[float, ...]]
     """
     if isinstance(archive, GridArchive):
         plt.figure(figsize=(8, 6))
-        grid_archive_heatmap(archive, emitter_loc=emitter_loc, forces=forces, cmap='viridis')
+        grid_archive_heatmap(archive, cmap='viridis')
         plt.tight_layout()
         plt.savefig(heatmap_path)
     elif isinstance(archive, CVTArchive):
@@ -226,7 +226,7 @@ def reevaluate_ppga_archive(env_cfg: AttrDict,
     print(f'{num_sols=}')
     envs_per_agent = 50
     env_cfg.env_batch_size = envs_per_agent * solution_batch_size
-    vec_env = make_vec_env_brax(env_cfg)
+    vec_env = make_vec_env_brax(env_cfg, seed=env_cfg.seed)
 
     obs_shape, action_shape = vec_env.single_observation_space.shape, vec_env.single_action_space.shape
     device = torch.device('cuda')
@@ -258,7 +258,7 @@ def reevaluate_ppga_archive(env_cfg: AttrDict,
     measures_list = np.array(measures_list)
 
     all_objs, all_measures, all_metadata = [], [], []
-    for i in range(0, num_sols, solution_batch_size):
+    for i in tqdm(range(0, num_sols, solution_batch_size), position=0):
         agent_batch = agents[i: i + solution_batch_size]
         measure_batch = measures_list[i: i + solution_batch_size]
 
@@ -279,7 +279,7 @@ def reevaluate_ppga_archive(env_cfg: AttrDict,
         if env_cfg.env_batch_size % len(agent_batch) != 0 and len(original_archive) % solution_batch_size != 0:
             del vec_env
             env_cfg.env_batch_size = len(agent_batch) * envs_per_agent
-            vec_env = make_vec_env_brax(env_cfg)
+            vec_env = make_vec_env_brax(env_cfg, seed=env_cfg.seed)
         # print(f'Evaluating solution batch {i}')
         vec_inference = VectorizedActor(agent_batch, Actor, obs_shape=obs_shape, action_shape=action_shape,
                                         normalize_obs=normalize_obs, normalize_returns=normalize_returns,
@@ -303,7 +303,7 @@ def reevaluate_ppga_archive(env_cfg: AttrDict,
                               ranges=bounds,
                               threshold_min=-10000,
                               seed=env_cfg.seed,
-                              qd_offset=reward_offset[env_cfg.env_name])
+                              qd_score_offset=reward_offset[env_cfg.env_name])
     all_objs[np.isnan(all_objs)] = 0
     # add the re-evaluated solutions to the new archive
     new_archive.add(
@@ -315,7 +315,7 @@ def reevaluate_ppga_archive(env_cfg: AttrDict,
     print(f'Coverage: {new_archive.stats.coverage} \n'
           f'Max fitness: {new_archive.stats.obj_max} \n'
           f'Avg Fitness: {new_archive.stats.obj_mean} \n'
-          f'QD Score: {new_archive.offset_qd_score}')
+          f'QD Score: {new_archive.qd_score_offset}')
 
     if save_path is not None:
         archive_fp = os.path.join(save_path, f'{env_cfg.env_name}_reeval_archive.pkl')

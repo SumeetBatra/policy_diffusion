@@ -6,6 +6,7 @@ import numpy as np
 
 from RL.base_policy import StochasticPolicy
 from typing import Union, Optional
+from attrdict import AttrDict
 
 
 def layer_init(layer, std=np.sqrt(2), bias_const=0.0):

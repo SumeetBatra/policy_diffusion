@@ -16,7 +16,6 @@ from common.brax_utils import shared_params
 from common.utils import extract, create_instance_from_spec as from_spec
 
 logger = logging.getLogger("trainer")
-logger.setLevel(logging.DEBUG)
 
 
 class TrainerBase:
@@ -92,6 +91,9 @@ class TrainerBase:
         self.cp_dir = Path(os.path.join(self.exp_dir, 'checkpoints'))
         self.cp_dir.mkdir(exist_ok=True)
 
+        self.save_image_path = os.path.join(self.exp_dir, 'images')
+        os.mkdir(self.save_image_path)
+
         # env specific params
         self.obs_dim = None
         self.action_shape = None
@@ -129,19 +131,20 @@ class TrainerBase:
             weight_normalizer=self.weight_normalizer
         )
 
-    def initialize_env(self, spec: Mapping[str, Any]) -> None:
-        self.env_name = spec['env']['env_name']
+    def initialize_env(self) -> None:
+        self.env_name = self.spec['env']['env_name']
         self.obs_dim, self.action_shape = shared_params[self.env_name]['obs_dim'], np.array([shared_params[self.env_name]['action_dim']])
-        self.clip_obs_rew = spec['env']['clip_obs_rew']
+        self.clip_obs_rew = self.spec['env']['clip_obs_rew']
 
         if self.track_agent_quality:
             rollouts_per_agent = 10  # to align ourselves with baselines
-            spec['env']['env_batch_size'] = self.test_batch_size * rollouts_per_agent
-            self.env = make_vec_env_brax(spec['env'], seed=self.random_seed)
+            self.spec['env']['env_batch_size'] = self.test_batch_size * rollouts_per_agent
+            self.spec['env']['num_dims'] = shared_params[self.env_name]['env_cfg']['num_dims']
+            self.env = make_vec_env_brax(self.spec['env'], seed=self.random_seed)
 
     def build(self, spec: Mapping[str, Any]) -> None:
         self.spec = spec
-        self.initialize_env(spec)
+        self.initialize_env()
         self.initialize_datasets()
 
         self.model = from_spec(spec['model'])

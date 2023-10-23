@@ -60,8 +60,8 @@ class DiffusionBase(TrainerBase):
 
     def build(self, spec: Mapping[str, Any]) -> None:
         self.spec = spec
-        self.initialize_datasets(spec)
-        self.initialize_env(spec)
+        self.initialize_datasets()
+        self.initialize_env()
 
         logvar = torch.full(fill_value=0., size=(self.timesteps,))
         self.model = from_spec(spec['model'], logvar=logvar)
