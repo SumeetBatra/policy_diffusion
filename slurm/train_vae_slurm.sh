@@ -13,8 +13,8 @@ export XLA_PYTHON_CLIENT_PREALLOCATE=false
 
 set -- 1111 2222 # seeds
 
-for seed in "$@";
-  do echo "Running seed $item";
+for seed in "$@"; do 
+  echo "Running seed $seed"
   RUN_NAME="my_vae_experiment_seed_"$seed
   echo $RUN_NAME
   srun -c12 python -m scripts.train --experiment_spec_file=specs/train_vae.yaml \
@@ -22,5 +22,5 @@ for seed in "$@";
                                     # all -o are spec overrides to default params in the yaml
                                     -o=spec.name=$RUN_NAME \
                                     -o=spec.trainer.config.random_seed=$seed \
-                                    -o=spec.grad_clip=false \
+                                    -o=spec.grad_clip=false 
 done

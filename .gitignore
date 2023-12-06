@@ -4,3 +4,4 @@ runs/
 archives/
 *__pycache__*
 wandb/
+tmp
