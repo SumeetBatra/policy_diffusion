@@ -17,9 +17,10 @@ for seed in "$@";
   do echo "Running seed $item";
   RUN_NAME="my_vae_experiment_seed_"$seed
   echo $RUN_NAME
-  srun python -m scripts.train --experiment_spec_file=specs/train_vae.yaml \
-                               --results_dir=./results \
-                               # all -o are spec overrides to default params in the yaml
-                               -o=spec.name=$RUN_NAME \
-                               -o=spec.trainer.config.random_seed=$seed \
-                               -o=grad_clip=false \
+  srun -c12 python -m scripts.train --experiment_spec_file=specs/train_vae.yaml \
+                                    --results_dir=./results \
+                                    # all -o are spec overrides to default params in the yaml
+                                    -o=spec.name=$RUN_NAME \
+                                    -o=spec.trainer.config.random_seed=$seed \
+                                    -o=spec.grad_clip=false \
+done

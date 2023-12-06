@@ -114,6 +114,7 @@ def setup_logging(log_level: int = logging.INFO, log_file: str = None):
         fh = logging.FileHandler(log_file)
         fh.setLevel(log_level)
         fh.setFormatter(formatter)
+        logging.root.addHandler(fh)
 
     # configure the console stream
     logging.root.addHandler(ch)
