@@ -2,7 +2,7 @@ name: test_experiment
 
 trainer:
   class: PolicyDiffusion
-  module: trainers.diffusion_trainers
+  module: trainers.diffusion_trainer
   config:
     random_seed: 1111
     archive_dir: ./archives
@@ -17,24 +17,16 @@ trainer:
     test_batch_size: 64
     num_epochs: 300
     center_data: true
-    autoencoder_cp_path: :(
+    autoencoder_cp_dir: results/debug_vae/
     amp:
       enabled: false
 
 
 sampler:
-  class: DDIM
+  class: DDIMSampler
   module: samplers.ddim
   config:
     n_steps: 100
-
-autoencoder:
-  class: HypernetAutoEncoder
-  module: autoencoders.hypernet
-  config:
-    emb_channels: 4
-    z_channels: 4
-    z_height: 4
 
 model:
   class: ConditionalUNet
@@ -55,4 +47,8 @@ optim:
   module: torch.optim
   config:
     lr: 0.001
+
+env:
+  env_name: humanoid
+  clip_obs_rew: true
 

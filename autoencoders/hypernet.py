@@ -18,7 +18,7 @@ class HypernetAutoEncoder(AutoEncoderBase):
                  enc_fc_hid: int,
                  obs_shape: int,
                  action_shape: np.ndarray,
-                 conditional: bool,
+                 conditional: bool = False,
                  **kwargs):
         """
         :param emb_channels: is the number of dimensions in the quantized embedding space

@@ -1,28 +1,28 @@
 import torch.jit
 import torch.nn.functional as F
 import torch.nn as nn
-import numpy as np
-import yaml
 import wandb
 import time
 import copy
 import logging
+import glob
+import yaml
 
+from tqdm import tqdm
 from pathlib import Path
+from torch.utils.tensorboard import SummaryWriter
 from diffusion.diffusion_base import DiffusionBase
 from common.metrics import evaluate_agent_quality
 from common.analysis import evaluate_ldm_subsample
 from common.utils import grad_norm, create_instance_from_spec as from_spec
-from typing import Dict, Any, Optional, Mapping
+from typing import Dict, Any, Optional
 from losses.loss_functions import mse
 
 logger = logging.getLogger("policy_diffusion")
 
 
 class PolicyDiffusion(DiffusionBase):
-    def __init__(self,
-                 autoencoder_cp_path: str,
-                 **kwargs):
+    def __init__(self, **kwargs):
         '''
         Implements the main policy diffusion model described in the paper. uses VAE for latent
         diffusion and DDIM for fast sampling
@@ -34,26 +34,73 @@ class PolicyDiffusion(DiffusionBase):
         self.vlb_weights[0] = self.vlb_weights[1]
         self.vlb_loss_coef = 1e-5
 
-        self.autoencoder = from_spec(self.spec['autoencoder'], obs_shape=self.obs_dim, action_shape=self.action_shape)
-        self._load_autoencoder_from_checkpoint(autoencoder_cp_path)
+    def build(self, spec: Dict[str, Any]) -> None:
+        self.spec = spec
+        self.initialize_env()
+        self.initialize_datasets()
+
+        logvar = torch.full(fill_value=0., size=(self.timesteps,))
+        self.model = from_spec(spec['model'], logvar=logvar)
+        self.model.to(self.device)
+
+        self.autoencoder = self._load_autoencoder_from_checkpoint(self.spec)
 
         self.latent_channels = self.autoencoder.emb_channels
         self.z_channels = self.autoencoder.z_channels
         self.latent_size = self.autoencoder.z_height
 
-    def _load_autoencoder_from_checkpoint(self, path: str):
-        path = Path(path)
-        if not path.exists():
-            raise RuntimeError(f'Checkpoint {path} does not exist')
+        # create sampler
+        diffusion_params = {
+            "timesteps": self.timesteps,
+            "betas": self.betas,
+            "alphas": self.alphas,
+            "alphas_cumprod": self.alphas_cumprod,
+            "alphas_cumprod_prev": self.alphas_cumprod_prev,
+            "posterior_variance": self.posterior_variance,
+            "posterior_log_variance_clipped": self.posterior_log_variance_clipped,
+            "posterior_mean_coef1": self.posterior_mean_coef1,
+            "posterior_mean_coef2": self.posterior_mean_coef2,
+            "sqrt_recip_alphas_cumprod": self.sqrt_recip_alphas_cumprod,
+            "sqrt_recipm1_alphas_cumprod": self.sqrt_recipm1_alphas_cumprod
+        }
 
-        checkpoint = torch.load(path, map_location=self.device)
-        self.autoencoder.load_state_dict(checkpoint)
+        self.sampler = from_spec(spec['sampler'], **diffusion_params)
+
+        if self.use_wandb:
+            self.writer = SummaryWriter(f'runs/{self.name}')
+
+        self.optimizer = from_spec(spec['optim'], self.model.parameters())
+
+    def _load_autoencoder_from_checkpoint(self, spec: Dict[str, Any]) -> nn.Module:
+        '''
+        Load autoencoder from checkpoint
+        :param path: path to autoencoder run dir
+        '''
+        autoencoder_cp_dir = spec['trainer']['config']['autoencoder_cp_dir']
+
+        path = Path(autoencoder_cp_dir)
+        if not path.exists():
+            raise RuntimeError(f'Checkpoint dir {path} does not exist')
+
+        spec_path = path.joinpath('experiment_spec_final.yaml')
+        with open(spec_path, 'r', encoding='utf-8') as src:
+            spec = yaml.safe_load(src)
+
+        autoencoder = from_spec(spec['model'], obs_shape=self.obs_dim, action_shape=self.action_shape)
+        autoencoder.to(self.device)
+
+        cp_dir = path.joinpath('checkpoints')
+        latest_cp = sorted(glob.glob(str(cp_dir) + '/model*'))[-1]
+
+        checkpoint = torch.load(latest_cp, map_location=self.device)
+        autoencoder.load_state_dict(checkpoint['model'])
+        return autoencoder
 
     def compute_training_losses(self,
                                 model: nn.Module,
                                 x_start: torch.Tensor,
                                 t: torch.Tensor,
-                                model_kwargs: Optional[Mapping[Any, Any]] = None,
+                                model_kwargs: Optional[Dict[Any, Any]] = None,
                                 noise: Optional[torch.Tensor] = None):
         cond = None
         if model_kwargs is None:
@@ -135,7 +182,7 @@ class PolicyDiffusion(DiffusionBase):
             epoch_vlb_loss = 0
             epoch_grad_norm = 0
             self.model.train()
-            for step, (policies, measures) in enumerate(self.train_loader):
+            for step, (policies, measures) in enumerate(tqdm(self.train_loader)):
                 if self.use_language:
                     measures, text_labels = measures
                 self.optimizer.zero_grad()
@@ -147,7 +194,7 @@ class PolicyDiffusion(DiffusionBase):
                     batch *= self.scale_factor
 
                 # Algorithm 1 line 3: sample t uniformally for every example in the batch
-                t = torch.randint(0, self.timesteps, (self.train_batch_size,), device=self.device).long()
+                t = torch.randint(0, self.timesteps, (len(policies),), device=self.device).long()
 
                 if self.use_language:
                     cond = self.model.text_to_cond(text_labels)
@@ -183,7 +230,7 @@ class PolicyDiffusion(DiffusionBase):
                     })
 
             # logging at the per-epoch timescale
-            logger.debug(f'Epoch: {epoch} Simple loss: {epoch_simple_loss / len(self.train_loader)}, Vlb Loss: {epoch_vlb_loss / len(self.train_loader)}')
+            logger.info(f'Epoch: {epoch} Simple loss: {epoch_simple_loss / len(self.train_loader)}, Vlb Loss: {epoch_vlb_loss / len(self.train_loader)}')
             if self.use_wandb:
                 wandb.log({
                     'losses/simple_loss': epoch_simple_loss / len(self.train_loader),
@@ -206,6 +253,7 @@ class PolicyDiffusion(DiffusionBase):
         self.save_checkpoint(epoch, self.global_step)
 
     def validate(self):
+        logger.info("Running validation...")
         self.model.eval()
         with torch.no_grad():
             # get latents from the LDM using the DDIM sampler. Then use the VAE decoder
@@ -243,6 +291,8 @@ class PolicyDiffusion(DiffusionBase):
                                           normalize_obs=True,
                                           center_data=self.center_data,
                                           weight_normalizer=self.weight_normalizer)
+            reward_ratio, js_div = info['Behavior']['reward_ratio'], info['Behavior']['js_div']
+            logger.info(f'Reward ratio: {reward_ratio}, JS Divergence: {js_div}')
             return info
 
     def reevaluate_archive(self, epoch: int, info: Dict[str, Any]):

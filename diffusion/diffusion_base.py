@@ -1,5 +1,6 @@
 import torch.nn.functional as F
 import logging
+import torch.nn as nn
 
 from trainers.trainer_base import TrainerBase
 from diffusion.schedules import *
@@ -21,6 +22,8 @@ logger.setLevel(logging.DEBUG)
 
 class DiffusionBase(TrainerBase):
     sampler: BaseSampler
+
+    autoencoder: nn.Module
 
     # empirically determined factor by which we scale the generated latent codes
     scale_factor: float

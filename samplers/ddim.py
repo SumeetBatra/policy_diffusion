@@ -19,7 +19,7 @@ class DDIMSampler(BaseSampler):
                  ddim_eta: float = 0.,
                  **kwargs: Mapping[str, Any]):
         super().__init__(kwargs)
-        BaseSampler.set_attributes(self, kwargs)
+        DDIMSampler.set_attributes(self, kwargs)
 
         self.n_steps = n_steps
 
@@ -52,7 +52,7 @@ class DDIMSampler(BaseSampler):
                skip_steps: int = 0,
                classifier_free_guidance: bool = False,
                classifier_scale: int = 1.0):
-        device = model.device
+        device = next(model.parameters()).device
         bs = shape[0]
         x = x_last if x_last is not None else torch.randn(shape, device=device)
         timesteps = np.flip(self.timesteps)[skip_steps:]

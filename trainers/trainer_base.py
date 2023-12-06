@@ -167,7 +167,7 @@ class TrainerBase:
 
     def save_checkpoint(self, epoch: int, global_step: int):
         suffix = f'epoch_{epoch}_iteration_{global_step}'
-        filename = self.cp_dir.joinpath(f'diffusion_model_checkpoint_{suffix}.pt')
+        filename = self.cp_dir.joinpath(f'model_checkpoint_{suffix}.pt')
         logger.debug(f'Saving {self.name} to {filename}')
 
         torch.save(
