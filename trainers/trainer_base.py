@@ -92,7 +92,7 @@ class TrainerBase:
         self.cp_dir.mkdir(exist_ok=True)
 
         self.save_image_path = os.path.join(self.exp_dir, 'images')
-        os.mkdir(self.save_image_path)
+        os.makedirs(self.save_image_path, exist_ok=True)
 
         # env specific params
         self.obs_dim = None

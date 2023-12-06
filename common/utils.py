@@ -180,7 +180,6 @@ def parse_spec_overrides(spec, other_args, allow_new_keys=False):
     """
 
     # 1. Convert other_args to dictionary.
-    # This is a very primitive parser, be gentle with it...
     spec_overrides = {}
     for a in other_args:
         items = a.split("=")

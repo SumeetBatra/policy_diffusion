@@ -59,8 +59,9 @@ def parse_command_line(
         "In this case, num_workers is set to 0 and multiprocessing_context is None.",
     )
     parser.add_argument(
+        "-o",
         "--spec_overrides",
-        nargs=argparse.REMAINDER,
+        action='append',
         default=None,
         help="Parses spec settings to override ones in the given spec file. "
         "Must start with spec as prefix, for example: spec.trainer.config.batch_size=8.",
@@ -97,7 +98,7 @@ def parse_command_line(
     parser.add_argument(
         "--wandb_entity",
         type=str,
-        default='ndas',
+        default='qdrl',
         help="The team/owner of this project"
     )
     parser.add_argument(
@@ -131,12 +132,17 @@ def parse_spec_file(args: argparse.Namespace) -> Mapping[str, Any]:
     # Use the results directory as a checkpoint directory for the trainer.
     results_dir = Path(os.path.expandvars(args.results_dir))
     results_dir.mkdir(exist_ok=True)
-    exp_dir = results_dir.joinpath(name + '_' + str(seed))
-    try:
-        exp_dir.mkdir(exist_ok=False)
-    except:
-        raise FileExistsError(f'Experiment dir {exp_dir} already exists.'
-                              f' Please rename your experiment or delete the old one')
+
+    if args.debug:
+        exp_dir = results_dir.joinpath('debug')
+        exp_dir.mkdir(exist_ok=True)
+    else:
+        exp_dir = results_dir.joinpath(name + '_' + str(seed))
+        try:
+            exp_dir.mkdir(exist_ok=False)
+        except:
+            raise FileExistsError(f'Experiment dir {exp_dir} already exists.'
+                                  f' Please rename your experiment or delete the old one')
 
     spec["trainer"]["config"]["exp_dir"] = str(exp_dir)
 
@@ -145,6 +151,9 @@ def parse_spec_file(args: argparse.Namespace) -> Mapping[str, Any]:
 
     # Set resume path, if provided.
     spec["trainer"]["config"]["resume"] = args.resume
+
+    # wandb
+    spec['trainer']['config']['use_wandb'] = args.use_wandb
 
     # set device
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
@@ -169,12 +178,15 @@ def _setup_logging(spec: Mapping[str, Any]) -> None:
 
 def _setup_wandb(args: Mapping[str, Any], spec: Mapping[str, Any]) -> None:
     """Sets up wandb experiment tracking if enabled"""
+    tag = args['wandb_tag']
+    if tag == '':
+        tag = None
     wandb.init(
         project=args['wandb_project'],
         entity=args['wandb_entity'],
         group=args['wandb_group'],
         name=args['wandb_run_name'],
-        tags=[args['wandb_tag']],
+        tags=tag,
         config=spec
     )
 

@@ -11,6 +11,7 @@ from common.tensor_dict import TensorDict
 from common.utils import grad_norm, create_instance_from_spec as from_spec
 from typing import Dict, Any, Optional, Mapping
 from losses.loss_functions import mse_loss_from_weights_dict
+from tqdm import tqdm
 
 
 logger = logging.getLogger("vae")
@@ -52,9 +53,9 @@ class VAETrainer(TrainerBase):
             # do an initial round of validation
             if self.track_agent_quality and epoch % 10 == 0:
                 info = self.validate()
-                image_results, uniform_image_results = None, None
+                image_results = None
                 if epoch % 50 == 0 and self.reeval_archive:
-                    info, image_results, uniform_image_results = self.reevaluate_archive(epoch, info)
+                    info, image_results, _ = self.reevaluate_archive(epoch, info)
 
                 if self.use_wandb:
                     for key, val in info.items():
@@ -69,8 +70,6 @@ class VAETrainer(TrainerBase):
                     if self.reeval_archive and image_results is not None:
                         wandb.log({'Archive/recon_image': wandb.Image(image_results['Reconstructed'],
                                                                       caption=f"Epoch {epoch + 1}")})
-                        wandb.log({'Archive/Uniform_recon_image': wandb.Image(uniform_image_results['Reconstructed'],
-                                                                          caption=f"Epoch {epoch + 1}")})
 
             # now the main training loop begins
             epoch_mse_loss = 0
@@ -80,7 +79,7 @@ class VAETrainer(TrainerBase):
             loss_infos = []
 
             self.model.train()
-            for step, (policies, measures) in enumerate(self.train_loader):
+            for step, (policies, measures) in enumerate(tqdm(self.train_loader)):
                 self.optimizer.zero_grad()
 
                 measures = measures.to(self.device).to(torch.float32)
@@ -203,7 +202,7 @@ class VAETrainer(TrainerBase):
         see how well the diffusion model's training is progressing. Eventually it should be able to reconstruct the
         archive as well as the VAE
         '''
-
+        logger.info('Evaluating the VAE reconstructed archive...')
         subsample_results, image_results = evaluate_vae_subsample(env_name=self.env_name,
                                                                   seed=self.random_seed,
                                                                   archive_df=self.train_archive[0],

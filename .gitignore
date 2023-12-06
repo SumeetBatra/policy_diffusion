@@ -3,3 +3,4 @@ results/
 runs/
 archives/
 *__pycache__*
+wandb/
